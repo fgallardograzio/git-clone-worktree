@@ -18,6 +18,9 @@ This tool streamlines the process of setting up a Git repository using multiple 
 
 # OPTIONS
 
+**-r**, **--relative-paths**
+: Configure worktrees to use relative paths.
+
 **-q**, **--quiet**
 : Suppress Git output.
 

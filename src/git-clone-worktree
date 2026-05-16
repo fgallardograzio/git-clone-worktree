@@ -8,15 +8,17 @@ usage() {
   echo "Usage: $(basename "$0") [<option>] <repository> [<directory>]"
   echo ""
   echo "Options:"
-  echo "  -q, --quiet     Suppress Git output."
-  echo "  -h, --help      Show this help message."
-  echo "  -v, --version   Show version information."
-  echo "  <repository>    The Git repository URL to clone."
-  echo "  <directory>     The target directory to create. If omitted,"
-  echo "                  it will be inferred from the repository URL."
+  echo "  -r, --relative-paths  Configure worktrees to use relative paths."
+  echo "  -q, --quiet           Suppress Git output."
+  echo "  -h, --help            Show this help message."
+  echo "  -v, --version         Show version information."
+  echo "  <repository>          The Git repository URL to clone."
+  echo "  <directory>           The target directory to create. If omitted,"
+  echo "                        it will be inferred from the repository URL."
 }
 
 QUIET=0
+RELATIVE_PATHS=0
 URL=""
 DIR=""
 
@@ -32,6 +34,10 @@ while [ $# -gt 0 ]; do
       ;;
     -q | --quiet)
       QUIET=1
+      shift
+      ;;
+    -r | --relative-paths)
+      RELATIVE_PATHS=1
       shift
       ;;
     -*)
@@ -134,10 +140,12 @@ run_git clone --bare "$URL" .git
 echo "⚙️  Configuring remote fetch mapping and worktree settings..."
 run_git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
 
-# Configure worktrees to use relative paths.
-# This ensures that if you move the outer folder (containing the .git bare repo
-# and its associated worktrees) to a new path, the linkages aren't broken.
-run_git config worktree.useRelativePaths true
+if [ "$RELATIVE_PATHS" = 1 ]; then
+  # Configure worktrees to use relative paths.
+  # This ensures that if you move the outer folder (containing the .git bare repo
+  # and its associated worktrees) to a new path, the linkages aren't broken.
+  run_git config worktree.useRelativePaths true
+fi
 
 # 3. Fetch remote branches.
 # Only fetching origin is necessary. This will populate the refs/remotes/origin/*
