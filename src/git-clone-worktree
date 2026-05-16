@@ -1,0 +1,205 @@
+#!/bin/sh
+set -e
+
+usage() {
+  echo "Clones a git repository into a bare .git folder in a new directory,"
+  echo "and checks out the default branch as the first worktree alongside it."
+  echo ""
+  echo "Usage: $(basename "$0") [<option>] <repository> [<directory>]"
+  echo ""
+  echo "Options:"
+  echo "  -q, --quiet     Suppress Git output."
+  echo "  -h, --help      Show this help message."
+  echo "  -v, --version   Show version information."
+  echo "  <repository>    The Git repository URL to clone."
+  echo "  <directory>     The target directory to create. If omitted,"
+  echo "                  it will be inferred from the repository URL."
+}
+
+QUIET=0
+URL=""
+DIR=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --version)
+      echo "git-clone-worktree v1.0.0"
+      exit 0
+      ;;
+    -q | --quiet)
+      QUIET=1
+      shift
+      ;;
+    -*)
+      echo "❌  Error: Unknown option '$1'." >&2
+      usage
+      exit 1
+      ;;
+    *)
+      if [ -z "$URL" ]; then
+        URL="$1"
+      elif [ -z "$DIR" ]; then
+        DIR="$1"
+      else
+        echo "❌  Error: Too many arguments." >&2
+        usage
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$URL" ]; then
+  usage
+  exit 1
+fi
+
+# Determine the target directory if not provided.
+if [ -z "$DIR" ]; then
+  # Extract directory name from URL (e.g., git@github.com:user/repo.git -> repo).
+  DIR=$(basename "$URL" .git)
+  if [ -z "$DIR" ] || [ "$DIR" = "/" ] || [ "$DIR" = "." ] || [ "$DIR" = ".." ]; then
+    echo "❌  Error: Could not determine a valid directory name from URL. Please provide it manually." >&2
+    exit 1
+  fi
+fi
+
+# Disable color codes when stdout is not a terminal (e.g., piping or redirecting to a file).
+if [ -t 1 ]; then
+  C_WHITE=$(printf '\033[37m')
+  C_RESET=$(printf '\033[0m')
+else
+  C_WHITE=''
+  C_RESET=''
+fi
+
+# Helper function to run git commands.
+# In quiet mode: suppress all git output.
+# In default mode: print the command being executed and all its output, in white.
+run_git() {
+  if [ "$QUIET" = 1 ]; then
+    # Some Git commands (like config) do not support the --quiet flag.
+    quiet_flag="--quiet"
+    case "$1" in
+      config)
+        quiet_flag=""
+        ;;
+    esac
+    # Disable set -e temporarily.
+    set +e
+    git "$@" $quiet_flag
+    code=$?
+    set -e
+  else
+    # Paint the terminal white for the command echo and git output.
+    printf "%s" "$C_WHITE"
+    # Print command.
+    echo "> git $*"
+    # Disable set -e temporarily to trap exit signals, preserving the color reset.
+    set +e
+    git "$@" 2>&1
+    code=$?
+    set -e
+    # Reset terminal color immediately after execution.
+    printf "%s" "$C_RESET"
+  fi
+
+  if [ $code -ne 0 ]; then
+    exit $code
+  fi
+}
+
+# Ensure the target directory doesn't already exist to avoid clashing.
+if [ -d "$DIR" ]; then
+  echo "❌  Error: Directory '$DIR' already exists." >&2
+  exit 1
+fi
+
+# 1. Clone the repo into a bare .git folder.
+echo "📥  Cloning bare repository into $DIR/.git..."
+mkdir -p "$DIR"
+cd "$DIR"
+
+run_git clone --bare "$URL" .git
+
+# 2. Git configuration.
+# Fix the fetch mapping so it uses the standard remote-tracking structure.
+# Bare clones default to mapping refs/heads to refs/heads, but we want worktrees
+# to behave like a standard repository tracking remote branches.
+echo "⚙️  Configuring remote fetch mapping and worktree settings..."
+run_git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+
+# Configure worktrees to use relative paths.
+# This ensures that if you move the outer folder (containing the .git bare repo
+# and its associated worktrees) to a new path, the linkages aren't broken.
+run_git config worktree.useRelativePaths true
+
+# 3. Fetch remote branches.
+# Only fetching origin is necessary. This will populate the refs/remotes/origin/*
+# namespace we just configured.
+echo "📡  Fetching remote branches..."
+run_git fetch origin
+
+# 4. The clone left you with one valid default branch (e.g., develop).
+# Set its upstream tracking (bare clones skip this).
+CURRENT=$(git branch --show-current)
+if [ -z "$CURRENT" ]; then
+  echo "❌  Error: Could not determine the default branch." >&2
+  exit 1
+fi
+
+echo "🔗  Setting upstream tracking for default branch '$CURRENT'..."
+run_git branch --set-upstream-to="origin/$CURRENT" "$CURRENT"
+
+# 5. Delete all other local branches so new branches are tracked automatically.
+# The initial clone pulled all branches into refs/heads/*. We only want the default
+# branch to exist locally, while the rest stay safely in refs/remotes/origin/*,
+# just like a normal clone.
+echo "🧹  Cleaning up duplicate local branches..."
+
+# Safety Check 1: Ensure we are exclusively operating on a bare repository.
+if [ "$(git rev-parse --is-bare-repository)" != "true" ]; then
+  echo "❌  Error: Not a bare repository. Aborting branch cleanup to prevent data loss." >&2
+  exit 1
+fi
+
+EXTRA_BRANCHES=""
+for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
+  if [ "$branch" != "$CURRENT" ]; then
+    # Safety Check 2: Verify the local branch commit exactly matches the
+    # freshly fetched remote branch commit in refs/remotes/origin.
+    # This mathematically guarantees we are only deleting duplicate pointers
+    # and losing absolutely no data.
+    LOCAL_HASH=$(git rev-parse --verify "refs/heads/$branch" 2> /dev/null || true)
+    REMOTE_HASH=$(git rev-parse --verify "refs/remotes/origin/$branch" 2> /dev/null || true)
+
+    if [ -n "$LOCAL_HASH" ] && [ "$LOCAL_HASH" = "$REMOTE_HASH" ]; then
+      EXTRA_BRANCHES="$EXTRA_BRANCHES $branch"
+    else
+      echo "⚠️  Warning: Safety check failed for '$branch' (Hash mismatch or missing remote). Skipping deletion." >&2
+    fi
+  fi
+done
+
+if [ -n "$EXTRA_BRANCHES" ]; then
+  # Note: We must use --delete --force rather than --delete. If any remote branches
+  # are not fully merged into the default branch (HEAD), a soft delete
+  # would fail with an "unmerged" error. We just cloned the repo, so we know
+  # we can safely force-delete these local copies.
+  # shellcheck disable=SC2086 # Intentionally relying on word splitting.
+  run_git branch --delete --force $EXTRA_BRANCHES
+fi
+
+# 6. Check out your default branch as your first worktree.
+echo "🌲  Creating worktree for '$CURRENT'..."
+run_git worktree add "$CURRENT"
+
+echo ""
+echo "✅  Done! Repository structure created successfully:"
+echo "    📂  Bare repo: $PWD/.git"
+echo "    🌱  Worktree:  $PWD/$CURRENT"

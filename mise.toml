@@ -1,0 +1,92 @@
+[tools]
+markdownlint-cli2 = "latest"
+pandoc = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+
+# ---------------------------------------------------------
+# Linting tasks: check for errors (CI)
+# ---------------------------------------------------------
+
+[tasks."lint:shfmt"]
+hide = true
+description = "Check shell script formatting"
+run = "find src -type f -exec shfmt --diff {} +"
+
+[tasks."lint:shellcheck"]
+hide = true
+description = "Lint shell script logic"
+run = "find src -type f -exec shellcheck {} +"
+
+[tasks."lint:sh"]
+description = "Lint shell script concurrently"
+depends = ["lint:shfmt", "lint:shellcheck"]
+
+[tasks."lint:md"]
+description = "Lint markdown documentation"
+run = "markdownlint-cli2 \"docs/**/*.md\""
+
+[tasks."lint:all"]
+description = "Lint everything concurrently"
+depends = ["lint:sh", "lint:md"]
+
+# ---------------------------------------------------------
+# Linting tasks: autofix (write to disk)
+# ---------------------------------------------------------
+
+[tasks."lint:shfmt:fix"]
+hide = true
+description = "Autofix shell script formatting"
+run = "find src -type f -exec shfmt --write {} +"
+
+[tasks."lint:sh:fix"]
+description = "Lint and autofix shell script concurrently"
+depends = ["lint:shfmt:fix", "lint:shellcheck"]
+
+[tasks."lint:md:fix"]
+description = "Lint and autofix markdown documentation"
+run = ["markdownlint-cli2 --fix \"docs/**/*.md\""]
+
+[tasks."lint:all:fix"]
+description = "Lint and autofix everything concurrently"
+depends = ["lint:sh:fix", "lint:md:fix"]
+
+# ---------------------------------------------------------
+# Documentation tasks: Generate man page (write to disk)
+# ---------------------------------------------------------
+[tasks.man]
+description = "Generate the man page from markdown source"
+depends = ["lint:md"]
+run = """
+rm -rf man/
+mkdir -p man/
+pandoc -f markdown-smart -s -t man ./docs/git-clone-worktree.1.md -o ./man/git-clone-worktree.1
+"""
+
+[tasks.help2man]
+hide = true
+description = "[DEPRECATED] Generate the man page using help2man. Kept for reference. Prefer the `man` task."
+depends = ["lint:sh"]
+run = """
+mkdir -p man
+help2man --no-info \
+  --name="Clones a bare git repository and checks out the default branch as the first worktree" \
+  --section=1 \
+  --output man/git-clone-worktree.help2man.1 \
+  ./src/git-clone-worktree
+"""
+
+# ---------------------------------------------------------
+# Release tasks
+# ---------------------------------------------------------
+[tasks.bundle]
+description = "Package the executable and man page into a release tarball"
+depends = ["lint:sh", "man"]
+usage = '''
+arg "<version>" help="The release version (e.g., v1.0.0)"
+'''
+run = """
+rm -rf dist/
+mkdir -p dist/
+tar -czvf "dist/git-clone-worktree-${usage_version?}.tar.gz" src/ man/ LICENSE
+"""
