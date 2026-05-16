@@ -1,0 +1,28 @@
+name: Publish Draft Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-release:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for creating Releases
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Tools (mise)
+        uses: jdx/mise-action@v4
+
+      - name: Package Artifacts
+        run: mise run bundle ${{ github.ref_name }}
+
+      - name: Create Draft Release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: dist/*.tar.gz
