@@ -63,19 +63,6 @@ mkdir -p man/
 pandoc -f markdown-smart -s -t man ./docs/git-clone-worktree.1.md -o ./man/git-clone-worktree.1
 """
 
-[tasks.help2man]
-hide = true
-description = "[DEPRECATED] Generate the man page using help2man. Kept for reference. Prefer the `man` task."
-depends = ["lint:sh"]
-run = """
-mkdir -p man
-help2man --no-info \
-  --name="Clones a bare git repository and checks out the default branch as the first worktree" \
-  --section=1 \
-  --output man/git-clone-worktree.help2man.1 \
-  ./src/git-clone-worktree
-"""
-
 # ---------------------------------------------------------
 # Release tasks
 # ---------------------------------------------------------
