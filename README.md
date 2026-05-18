@@ -16,6 +16,15 @@ A standard `git clone --bare` creates a repository where all remote branches are
 
 ## Installation
 
+The easiest way to install in macOS or Linux is via Homebrew using the custom tap:
+
+```sh
+brew install fgallardograzio/tap/git-clone-worktree
+```
+
+<details>
+<summary><strong>Manual Installation</strong></summary>
+
 1. Download the latest release tarball from the [Releases](https://github.com/fgallardograzio/git-clone-worktree/releases) page.
 2. Extract the archive:
 
@@ -35,6 +44,8 @@ A standard `git clone --bare` creates a repository where all remote branches are
    sudo cp man/git-clone-worktree.1 /usr/local/share/man/man1/
    ```
 
+</details>
+
 ## Usage
 
 ```sh
@@ -43,7 +54,8 @@ git-clone-worktree [<options>] <repository> [<directory>]
 
 For a complete list of options and more detailed information, run `git-clone-worktree --help` or refer to the manual page (`man git-clone-worktree`).
 
-### Examples
+<details>
+<summary><strong>Examples</strong></summary>
 
 Clone a repository into a directory named after the repository basename:
 
@@ -56,6 +68,8 @@ Clone a repository into a specific target directory:
 ```sh
 git-clone-worktree git@github.com:user/repo.git my-project
 ```
+
+</details>
 
 ## Development
 
