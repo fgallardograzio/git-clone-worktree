@@ -59,16 +59,4 @@ git-clone-worktree git@github.com:user/repo.git my-project
 
 ## Development
 
-This project uses `mise` for task automation and dependency management.
-
-Format and lint the shell scripts and documentation:
-
-```sh
-mise run lint:all:fix
-```
-
-Compile the man page:
-
-```sh
-mise run man
-```
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to set up your environment, install dependencies using `mise`, and run the linters.

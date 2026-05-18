@@ -24,7 +24,7 @@ depends = ["lint:shfmt", "lint:shellcheck"]
 
 [tasks."lint:md"]
 description = "Lint markdown documentation"
-run = "markdownlint-cli2 \"docs/**/*.md\""
+run = "markdownlint-cli2 \"*.md\" \"docs/**/*.md\""
 
 [tasks."lint:all"]
 description = "Lint everything concurrently"
@@ -45,7 +45,7 @@ depends = ["lint:shfmt:fix", "lint:shellcheck"]
 
 [tasks."lint:md:fix"]
 description = "Lint and autofix markdown documentation"
-run = ["markdownlint-cli2 --fix \"docs/**/*.md\""]
+run = ["markdownlint-cli2 --fix \"*.md\" \"docs/**/*.md\""]
 
 [tasks."lint:all:fix"]
 description = "Lint and autofix everything concurrently"
