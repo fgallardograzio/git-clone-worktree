@@ -164,11 +164,11 @@ fi
 echo "🔗  Setting upstream tracking for default branch '$CURRENT'..."
 run_git branch --set-upstream-to="origin/$CURRENT" "$CURRENT"
 
-# 5. Delete all other local branches so new branches are tracked automatically.
-# The initial clone pulled all branches into refs/heads/*. We only want the default
-# branch to exist locally, while the rest stay safely in refs/remotes/origin/*,
-# just like a normal clone.
-echo "🧹  Cleaning up duplicate local branches..."
+# 5. Delete extraneous local branches created by the bare clone.
+# The initial clone eagerly pulled all remote branches into local refs/heads/*. We only
+# want the default branch to exist locally. The rest should reside safely in
+# refs/remotes/origin/*, mirroring the behavior of a standard non-bare clone.
+echo "🧹  Cleaning up extraneous local branches..."
 
 # Safety Check 1: Ensure we are exclusively operating on a bare repository.
 if [ "$(git rev-parse --is-bare-repository)" != "true" ]; then
@@ -176,23 +176,29 @@ if [ "$(git rev-parse --is-bare-repository)" != "true" ]; then
   exit 1
 fi
 
-EXTRA_BRANCHES=""
-for branch in $(git for-each-ref --format='%(refname:short)' refs/heads/); do
-  if [ "$branch" != "$CURRENT" ]; then
-    # Safety Check 2: Verify the local branch commit exactly matches the
-    # freshly fetched remote branch commit in refs/remotes/origin.
-    # This mathematically guarantees we are only deleting duplicate pointers
-    # and losing absolutely no data.
-    LOCAL_HASH=$(git rev-parse --verify "refs/heads/$branch" 2> /dev/null || true)
-    REMOTE_HASH=$(git rev-parse --verify "refs/remotes/origin/$branch" 2> /dev/null || true)
+# Fetch all remote-tracking branches and their hashes into a variable.
+REMOTE_REFS=$(git for-each-ref --format='%(objectname) %(refname:lstrip=2)' refs/remotes/origin/)
 
-    if [ -n "$LOCAL_HASH" ] && [ "$LOCAL_HASH" = "$REMOTE_HASH" ]; then
+# Iterate through local branches to safely mark them for deletion.
+# A local branch is safely deleted only if it is completely up to date with a
+# remote-tracking branch of the exact same name.
+EXTRA_BRANCHES=""
+while read -r hash branch; do
+  # Ignore empty lines and the current default branch
+  if [ -n "$branch" ] && [ "$branch" != "$CURRENT" ]; then
+    # Safety Check 2: Ensure the local branch is perfectly synced with the freshly fetched
+    # remote-tracking branch. We use grep to securely bypass issues where case-insensitive
+    # filesystems (like macOS APFS) force uppercase/lowercase branches into the same ref path.
+    if printf '%s\n' "$REMOTE_REFS" |
+      grep --ignore-case --fixed-strings --line-regexp --quiet "$hash origin/$branch"; then
       EXTRA_BRANCHES="$EXTRA_BRANCHES $branch"
     else
       echo "⚠️  Warning: Safety check failed for '$branch' (Hash mismatch or missing remote). Skipping deletion." >&2
     fi
   fi
-done
+done << EOF
+$(git for-each-ref --format='%(objectname) %(refname:lstrip=2)' refs/heads/)
+EOF
 
 if [ -n "$EXTRA_BRANCHES" ]; then
   # Note: We must use --delete --force rather than --delete. If any remote branches
