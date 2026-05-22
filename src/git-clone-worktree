@@ -29,7 +29,7 @@ while [ $# -gt 0 ]; do
       exit 0
       ;;
     -v | --version)
-      echo "git-clone-worktree v1.0.0"
+      echo "git-clone-worktree v1.0.1"
       exit 0
       ;;
     -q | --quiet)

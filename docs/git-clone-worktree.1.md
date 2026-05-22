@@ -1,4 +1,4 @@
-% GIT-CLONE-WORKTREE(1) git-clone-worktree v1.0.0
+% GIT-CLONE-WORKTREE(1) git-clone-worktree v1.0.1
 %
 % May 2026
 
