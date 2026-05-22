@@ -40,6 +40,14 @@ while [ $# -gt 0 ]; do
       RELATIVE_PATHS=1
       shift
       ;;
+    -[!-]?*)
+      # Split multiple short options (e.g. -qr into -q and -r)
+      first_opt="${1%"${1#??}"}"
+      rest_opts="-${1#??}"
+      shift
+      set -- "$first_opt" "$rest_opts" "$@"
+      continue
+      ;;
     -*)
       echo "❌  Error: Unknown option '$1'." >&2
       usage
