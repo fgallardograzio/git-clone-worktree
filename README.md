@@ -44,6 +44,27 @@ brew install fgallardograzio/tap/git-clone-worktree
    sudo cp man/git-clone-worktree.1 /usr/local/share/man/man1/
    ```
 
+5. (Optional) Install shell completions:
+
+   **Zsh**:
+
+   ```sh
+   sudo cp completions/_git-clone-worktree /usr/local/share/zsh/site-functions/
+   ```
+
+   **Fish**:
+
+   ```sh
+   mkdir -p ~/.config/fish/completions
+   cp completions/git-clone-worktree.fish ~/.config/fish/completions/
+   ```
+
+   **Bash**:
+
+   ```sh
+   sudo cp completions/git-clone-worktree.bash /etc/bash_completion.d/git-clone-worktree
+   ```
+
 </details>
 
 ## Usage

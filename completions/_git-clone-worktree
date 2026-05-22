@@ -1,0 +1,19 @@
+#compdef git-clone-worktree
+#description Clone a bare repository and checkout a worktree
+
+_git-clone-worktree() {
+    local -a args
+
+    args=(
+        '(-r --relative-paths)'{-r,--relative-paths}'[Configure worktrees to use relative paths]'
+        '(-q --quiet)'{-q,--quiet}'[Suppress Git output]'
+        '(-h --help)'{-h,--help}'[Show this help message]'
+        '(-v --version)'{-v,--version}'[Show version information]'
+        '1:repository:()'
+        '2:directory:()'
+    )
+
+    _arguments -S -s $args
+}
+
+_git-clone-worktree "$@"
