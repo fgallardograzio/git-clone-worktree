@@ -11,12 +11,12 @@ shfmt = "latest"
 [tasks."lint:shfmt"]
 hide = true
 description = "Check shell script formatting"
-run = "find src -type f -exec shfmt --diff {} +"
+run = 'find src -type f -exec shfmt --diff {} +'
 
 [tasks."lint:shellcheck"]
 hide = true
 description = "Lint shell script logic"
-run = "find src -type f -exec shellcheck {} +"
+run = 'find src -type f -exec shellcheck {} +'
 
 [tasks."lint:sh"]
 description = "Lint shell script concurrently"
@@ -24,7 +24,7 @@ depends = ["lint:shfmt", "lint:shellcheck"]
 
 [tasks."lint:md"]
 description = "Lint markdown documentation"
-run = "markdownlint-cli2 \"*.md\" \"docs/**/*.md\""
+run = 'markdownlint-cli2 "*.md" "docs/**/*.md"'
 
 [tasks."lint:all"]
 description = "Lint everything concurrently"
@@ -37,7 +37,7 @@ depends = ["lint:sh", "lint:md"]
 [tasks."lint:shfmt:fix"]
 hide = true
 description = "Autofix shell script formatting"
-run = "find src -type f -exec shfmt --write {} +"
+run = 'find src -type f -exec shfmt --write {} +'
 
 [tasks."lint:sh:fix"]
 description = "Lint and autofix shell script concurrently"
@@ -45,7 +45,7 @@ depends = ["lint:shfmt:fix", "lint:shellcheck"]
 
 [tasks."lint:md:fix"]
 description = "Lint and autofix markdown documentation"
-run = ["markdownlint-cli2 --fix \"*.md\" \"docs/**/*.md\""]
+run = 'markdownlint-cli2 --fix "*.md" "docs/**/*.md"'
 
 [tasks."lint:all:fix"]
 description = "Lint and autofix everything concurrently"
@@ -57,11 +57,11 @@ depends = ["lint:sh:fix", "lint:md:fix"]
 [tasks.man]
 description = "Generate the man page from markdown source"
 depends = ["lint:md"]
-run = """
-rm -rf man/
-mkdir -p man/
-pandoc -f markdown-smart -s -t man ./docs/git-clone-worktree.1.md -o ./man/git-clone-worktree.1
-"""
+run = [
+  'rm -rf man/',
+  'mkdir -p man/',
+  'pandoc -f markdown-smart -s -t man ./docs/git-clone-worktree.1.md -o ./man/git-clone-worktree.1',
+]
 
 # ---------------------------------------------------------
 # Release tasks
@@ -72,8 +72,8 @@ depends = ["lint:sh", "man"]
 usage = '''
 arg "<version>" help="The release version (e.g., v1.0.0)"
 '''
-run = """
-rm -rf dist/
-mkdir -p dist/
-tar -czvf "dist/git-clone-worktree-${usage_version?}.tar.gz" src/ man/ completions/ LICENSE
-"""
+run = [
+  'rm -rf dist/',
+  'mkdir -p dist/',
+  'tar -czvf "dist/git-clone-worktree-${usage_version?}.tar.gz" src/ man/ completions/ LICENSE',
+]
